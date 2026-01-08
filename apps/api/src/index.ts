@@ -9,7 +9,43 @@ import { getEnv } from "./env";
 import { requireAuth, requireRole, signToken } from "./auth";
 
 const app = express();
-app.use(cors());
+
+// Configuração robusta de CORS para produção (Railway) e desenvolvimento
+const allowedFromEnv = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const defaultAllowed = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+const allowedOrigins = [...defaultAllowed, ...allowedFromEnv];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Permitir requisições sem origin (curl, same-origin)
+    if (!origin) return callback(null, true);
+
+    const isAllowedExplicit = allowedOrigins.includes(origin);
+    // Permitir qualquer domínio *.up.railway.app (Web e API em Railway)
+    const isRailwayDomain = origin.endsWith(".up.railway.app");
+
+    if (isAllowedExplicit || isRailwayDomain) {
+      return callback(null, true);
+    }
+    return callback(new Error("Origin não permitido"));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+// Garantir resposta ao preflight para todas as rotas
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

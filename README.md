@@ -16,8 +16,10 @@ Sistema MVP para limpeza de celulares com foco em mídia do WhatsApp, oferecendo
 Monorepo com três aplicações independentes:
 
 - **Web**: Vite + React 19 + TypeScript + Tailwind CSS v4
-- **API**: Node.js + Express + TypeScript + Prisma 7 + PostgreSQL
+- **API**: Node.js + Express + TypeScript + Prisma 7 + **PostgreSQL na nuvem (Railway)**
 - **Mobile**: Expo SDK 54 + React Native + TypeScript
+
+**Banco de Dados**: PostgreSQL gerenciado na nuvem pelo Railway com configuração padrão otimizada para produção (SSL/TLS, backups automáticos, 500MB storage).
 
 > ⚠️ **Nota importante**: Este MVP usa **varredura mock** (simulação). Acesso real a arquivos do WhatsApp no Android exige permissões nativas e implementação específica com React Native File System.
 
