@@ -29,8 +29,8 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          railway variables set JWT_SECRET="$JWT_SECRET"
           railway variables set DATABASE_URL="$DATABASE_URL"
+          railway variables set JWT_SECRET="$JWT_SECRET"
           railway variables set PORT="4000"
       - name: Install API deps
         working-directory: apps/api

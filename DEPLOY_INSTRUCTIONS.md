@@ -83,7 +83,40 @@ Copie o valor gerado (algo como `Xk9Ym3Qp7Rw8...`).
 | `JWT_SECRET` | `Xk9Ym3Qp7Rw8...` | Passo 4 |
 | `VITE_API_URL` | `https://limpa-celular-api.up.railway.app` | Será atualizado após deploy |
 
-⚠️ **Nota**: O `VITE_API_URL` pode ser temporariamente definido como acima. Atualize após o primeiro deploy com a URL real da API.
+---
+
+## ⚙️ Passo 5.1: Configurar Variáveis DIRETAMENTE no Railway
+
+**⚠️ IMPORTANTE**: Além dos GitHub Secrets, você DEVE configurar as variáveis diretamente nos serviços do Railway:
+
+### API Service Variables
+
+1. Vá para Railway Dashboard → Projeto `limpa-celular-api`
+2. Clique no service **"api"**
+3. Vá para a aba **"Variables"**
+4. Adicione EXATAMENTE estas variáveis (nomes corretos):
+
+```bash
+DATABASE_URL=postgresql://postgres:senha@host.railway.internal:5432/railway?schema=public
+JWT_SECRET=seu-jwt-secret-aqui-min-16-chars
+PORT=4000
+```
+
+### Web Service Variables
+
+1. Vá para Railway Dashboard → Projeto `limpa-celular-web`
+2. Clique no service **"web"**
+3. Vá para a aba **"Variables"**
+4. Adicione EXATAMENTE esta variável:
+
+```bash
+VITE_API_URL=https://[dominio-real-da-api].up.railway.app
+```
+
+**✅ Nomes corretos das variáveis**:
+- ✅ `DATABASE_URL` (não `URL_DO_BANCO_DE_DADOS`)
+- ✅ `JWT_SECRET` (não `JWT_TOKEN` ou `SECRET`)
+- ✅ `VITE_API_URL` (não `URL_DA_API_VITE` ou `API_URL`)
 
 ---
 
@@ -178,25 +211,35 @@ Para acessar funcionalidades administrativas (Configurações de Nuvem):
 
 ---
 
-## 🔧 Troubleshooting
+## � Troubleshooting
 
 ### Problema: Workflow falha com erro de Prisma Client
 
 **Solução**: Verifique que o `DATABASE_URL` no Secret tem `?schema=public` no final.
 
-### Problema: Web não conecta na API
+### Problema: Web não conecta na API (ERR_CONNECTION_REFUSED)
 
 **Solução**: 
-1. Verifique que o `VITE_API_URL` está correto (URL da API do Railway)
-2. Execute o workflow novamente após atualizar o Secret
+1. Verifique que `VITE_API_URL` está configurado NO RAILWAY (não só no GitHub)
+2. Railway Dashboard → Web service → Variables → `VITE_API_URL`
+3. Valor deve ser: `https://[dominio-api].up.railway.app`
+4. Clique em **"Redeploy"** após alterar
 
-### Problema: API retorna erro 500
+### Problema: API retorna "Connection URL is empty"
 
 **Solução**:
-1. Vá para o serviço API no Railway
-2. Aba **"Deployments"** → clique no último deploy
-3. Veja os logs para identificar o erro
-4. Verifique as variáveis de ambiente na aba **"Variables"**
+1. Vá para Railway Dashboard → API service → Variables
+2. Verifique que `DATABASE_URL` existe e está preenchida
+3. Deve ser EXATAMENTE: `DATABASE_URL` (não `URL_DO_BANCO_DE_DADOS`)
+4. Formato: `postgresql://user:pass@host:5432/db?schema=public`
+5. Clique em **"Redeploy"** após corrigir
+
+### Problema: Build falha com "apt-get install libatomic1"
+
+**Solução**: Este erro foi corrigido! Removemos o Dockerfile e agora usamos Nixpacks.
+1. Certifique-se que `apps/api/Dockerfile` NÃO existe
+2. Certifique-se que `nixpacks.toml` existe na raiz
+3. Execute novo deploy: `git push origin main`
 
 ---
 
