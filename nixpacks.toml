@@ -6,7 +6,7 @@ nixPkgs = ['nodejs-20_x', 'openssl']
 
 [phases.install]
 cmds = [
-  'npm ci --legacy-peer-deps',
+  'npm install --legacy-peer-deps --include=dev',
   'cd apps/api && npx prisma generate'
 ]
 
