@@ -65,12 +65,21 @@ jobs:
         env:
           RAILWAY_PROJECT_ID_WEB: ${{ secrets.RAILWAY_PROJECT_ID_WEB }}
         run: railway link --project "$RAILWAY_PROJECT_ID_WEB"
+      - name: Set Environment Variables (Web)
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          if [ -n "$VITE_API_URL" ]; then
+            railway variables set VITE_API_URL="$VITE_API_URL"
+          fi
       - name: Install Web deps
         working-directory: apps/web
         run: npm ci
       - name: Build Web
         working-directory: apps/web
         run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
       - name: Deploy Web
         run: railway up --path apps/web --service "web" --project "$RAILWAY_PROJECT_ID_WEB"
         env:
