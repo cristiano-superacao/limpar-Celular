@@ -51,6 +51,8 @@ JWT_SECRET=sua-chave-secreta
 PORT=4000
 ```
 
+Dica: você pode copiar o modelo em `apps/api/.env.example`.
+
 ## Rodando o Web
 
 ```bash
@@ -81,7 +83,7 @@ Se estiver usando emulador Android, normalmente funciona:
 
 O endpoint de configuração de nuvem (`/admin/cloud-config`) exige `role=ADMIN`.
 
-Para promover um usuário para ADMIN no SQLite (modo simples):
+Para promover um usuário para ADMIN no banco (modo simples):
 
 1) Abra o Prisma Studio:
 ```bash
@@ -90,6 +92,12 @@ npx prisma studio
 ```
 
 2) Em `User`, altere o campo `role` para `ADMIN`.
+
+## Deploy (Railway)
+
+- A API depende de `DATABASE_URL` e `JWT_SECRET`.
+- Em produção, a API executa `prisma migrate deploy` no start.
+- Se você estiver usando GitHub Actions + Railway CLI, garanta que o Secret/variável se chame exatamente `DATABASE_URL` (não `DATABASE_URI`/`DATABASE` etc.).
 
 ## 📋 Fluxo do MVP
 

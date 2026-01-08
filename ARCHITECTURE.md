@@ -25,7 +25,7 @@ limpa-celular/
 - **Framework**: Express 5
 - **Linguagem**: TypeScript
 - **ORM**: Prisma 7
- - **Database**: PostgreSQL (produção e desenvolvimento via `DATABASE_URL`)
+- **Database**: PostgreSQL (produção e desenvolvimento via `DATABASE_URL`)
 - **Auth**: JWT (jsonwebtoken)
 - **Validação**: Zod
 
