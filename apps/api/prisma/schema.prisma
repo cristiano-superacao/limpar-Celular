@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum CleaningStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SCANNED
+  COMPLETED
+}
+
+enum CloudProvider {
+  NONE
+  AZURE_BLOB
+  AWS_S3
+  GOOGLE_DRIVE
+  OTHER
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  passwordHash String
+  role         Role             @default(USER)
+  createdAt    DateTime         @default(now())
+  requests     CleaningRequest[]
+}
+
+model CleaningRequest {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  status         CleaningStatus @default(PENDING)
+  deviceInfo     String?
+  scanResultJson String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model CloudConfig {
+  id                String        @id @default(cuid())
+  provider          CloudProvider @default(NONE)
+  enabled           Boolean       @default(false)
+  bucketOrContainer String?
+  region            String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
