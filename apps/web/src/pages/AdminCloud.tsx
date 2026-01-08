@@ -43,8 +43,12 @@ export function AdminCloudPage() {
 
       <div className="rounded-2xl border bg-white p-5 shadow-sm">
         {loading ? <div className="text-sm text-slate-500">Carregando...</div> : null}
-        {error ? <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-        {ok ? <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{ok}</div> : null}
+        {error ? (
+          <div role="alert" aria-live="polite" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        ) : null}
+        {ok ? (
+          <div role="status" aria-live="polite" className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{ok}</div>
+        ) : null}
 
         <form
           className="grid grid-cols-1 gap-4 md:grid-cols-2"

@@ -38,29 +38,33 @@ export function LoginPage() {
             }}
           >
             <div>
-              <label className="text-sm font-medium">E-mail</label>
+              <label htmlFor="email" className="text-sm font-medium">E-mail</label>
               <input
                 className="mt-1 w-full rounded-xl border px-3 py-2 outline-none ring-slate-200 focus:ring"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
+                id="email"
                 required
                 placeholder="seuemail@exemplo.com"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Senha</label>
+              <label htmlFor="password" className="text-sm font-medium">Senha</label>
               <input
                 className="mt-1 w-full rounded-xl border px-3 py-2 outline-none ring-slate-200 focus:ring"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
+                id="password"
                 required
                 placeholder="********"
               />
             </div>
 
-            {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+            {error ? (
+              <div role="alert" aria-live="polite" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+            ) : null}
 
             <button
               className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
