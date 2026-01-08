@@ -95,7 +95,44 @@ app.get("/health", async (_req, res) => {
   try {
     // Verifica conectividade básica com o banco
     await db.$queryRaw`SELECT 1`;
-    return res.json({ ok: true, db: "up" });
+
+    // Verificações do schema (tabelas e enums essenciais)
+    const [userTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') AS exists;"
+    );
+    const [reqTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CleaningRequest') AS exists;"
+    );
+    const [cloudTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CloudConfig') AS exists;"
+    );
+
+    const [roleEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='Role') AS exists;"
+    );
+    const [statusEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='CleaningStatus') AS exists;"
+    );
+    const [providerEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='CloudProvider') AS exists;"
+    );
+
+    return res.json({
+      ok: true,
+      db: "up",
+      schema: {
+        tables: {
+          User: userTable?.exists ?? false,
+          CleaningRequest: reqTable?.exists ?? false,
+          CloudConfig: cloudTable?.exists ?? false,
+        },
+        enums: {
+          Role: roleEnum?.exists ?? false,
+          CleaningStatus: statusEnum?.exists ?? false,
+          CloudProvider: providerEnum?.exists ?? false,
+        },
+      },
+    });
   } catch (e) {
     logger.error({ err: e }, "health db check failed");
     return res.status(503).json({ ok: false, db: "down" });
