@@ -41,18 +41,33 @@ Este guia ajudará você a configurar os Secrets necessários no GitHub e realiz
 
 ---
 
-## 🗄️ Passo 3: Provisionar Banco de Dados PostgreSQL
+## 🗄️ Passo 3: Provisionar Banco de Dados PostgreSQL na Nuvem
+
+⚠️ **IMPORTANTE**: O Railway provisiona PostgreSQL gerenciado na nuvem com configuração padrão otimizada.
+
+### 3.1 Criar PostgreSQL no Railway
 
 1. Abra o projeto `limpa-celular-api` no Railway
 2. Clique em **"+ New"** → **"Database"** → **"Add PostgreSQL"**
-3. Aguarde a provisão do banco
-4. Clique no serviço PostgreSQL criado
-5. Vá para a aba **"Variables"**
-6. Copie o valor da variável **`DATABASE_URL`**
-7. **IMPORTANTE**: Adicione `?schema=public` ao final da URL:
+3. Aguarde 30-60 segundos (o Railway provisionará automaticamente)
+4. O PostgreSQL será criado com **configuração padrão em nuvem**:
+   - PostgreSQL 17.x (latest)
+   - 500MB storage (plano free)
+   - SSL/TLS habilitado
+   - Backups automáticos
+   - Schema `public` padrão
+
+### 3.2 Obter DATABASE_URL
+
+1. Clique no serviço **"Postgres"** criado (ícone 🐘)
+2. Vá para a aba **"Variables"**
+3. Copie o valor da variável **`DATABASE_URL`**
+4. **ADICIONE** `?schema=public` ao final:
    ```
-   postgresql://user:pass@host:5432/railway?schema=public
+   postgresql://postgres:senha@host.railway.app:5432/railway?schema=public
    ```
+
+📖 **Guia detalhado**: [RAILWAY_POSTGRES_SETUP.md](RAILWAY_POSTGRES_SETUP.md)
 
 ---
 
