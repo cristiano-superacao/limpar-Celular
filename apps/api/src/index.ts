@@ -3,12 +3,40 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import helmet from "helmet";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
+import pino from "pino";
+import pinoHttp from "pino-http";
+import { randomUUID } from "crypto";
 
 import { db } from "./db";
 import { getEnv } from "./env";
 import { requireAuth, requireRole, signToken } from "./auth";
 
 const app = express();
+const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+app.use(pinoHttp({
+  logger,
+  genReqId: (req) => (req.headers["x-request-id"] as string) || randomUUID(),
+}));
+// expõe X-Request-Id nas respostas para correlação
+app.use((req, res, next) => {
+  const id = (req as any).id as string | undefined;
+  if (id) res.setHeader("X-Request-Id", id);
+  next();
+});
+// Segurança e performance básicas
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
+app.use(compression());
+// Rate limit geral (pode ajustar conforme necessidade)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+});
+app.use(limiter);
 
 // Configuração robusta de CORS para produção (Railway) e desenvolvimento
 const allowedFromEnv = (process.env.CORS_ORIGIN || "")
@@ -49,50 +77,26 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// Middleware defensivo: garante cabeçalhos CORS mesmo em respostas de erro
-app.use((req, res, next) => {
-  const origin = req.headers.origin as string | undefined;
-
-  let allow = false;
-  if (!origin) {
-    allow = true; // same-origin / curl
-  } else if (allowedOrigins.includes(origin)) {
-    allow = true;
-  } else {
-    try {
-      const hostname = new URL(origin).hostname;
-      if (hostname.endsWith(".up.railway.app")) allow = true;
-    } catch {
-      // Ignore parsing errors
-    }
-  }
-
-  if (allow && origin) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Vary", "Origin");
-  }
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, content-type, Authorization, authorization, Origin"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Max-Age", "86400");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
-// Além do middleware manual, mantém cors() para casos padrão
+// CORS padronizado (inclui preflight)
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// Rate limit específico para autenticação (mais restritivo)
+const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 
-app.post("/auth/register", async (req, res) => {
+app.get("/health", async (_req, res) => {
+  try {
+    // Verifica conectividade básica com o banco
+    await db.$queryRaw`SELECT 1`;
+    return res.json({ ok: true, db: "up" });
+  } catch (e) {
+    logger.error({ err: e }, "health db check failed");
+    return res.status(503).json({ ok: false, db: "down" });
+  }
+});
+
+app.post("/auth/register", authLimiter, async (req, res) => {
   const bodySchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
@@ -116,7 +120,7 @@ app.post("/auth/register", async (req, res) => {
   return res.status(201).json({ token, user });
 });
 
-app.post("/auth/login", async (req, res) => {
+app.post("/auth/login", authLimiter, async (req, res) => {
   const bodySchema = z.object({
     email: z.string().email(),
     password: z.string().min(1),
@@ -278,4 +282,13 @@ const port = env.PORT ?? 4000;
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`API rodando em http://localhost:${port}`);
+});
+
+// Handler global de erros - mantém resposta consistente
+// Deve vir após as rotas
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  (req as any).log?.error({ err }, "unhandled error");
+  if (res.headersSent) return;
+  res.status(500).json({ message: "Erro interno" });
 });
