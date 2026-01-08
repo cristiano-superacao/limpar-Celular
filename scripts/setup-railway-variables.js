@@ -19,6 +19,9 @@ console.log('\n   2. JWT_SECRET');
 console.log('      Valor: (seu secret gerado com 32+ caracteres)');
 console.log('\n   3. PORT');
 console.log('      Valor: 4000');
+console.log('\n   4. CORS_ORIGIN (opcional)');
+console.log('      Valor: https://limpacelular.up.railway.app');
+console.log('      Observação: se definido, restringe CORS à(s) origem(ns) informada(s)');
 
 console.log('\n\n📋 PASSO 2: Variáveis do Web (Serviço "web")\n');
 console.log('   No Railway Dashboard → Projeto Web → Service "web" → Variables:');

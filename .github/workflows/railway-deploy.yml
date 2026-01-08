@@ -28,10 +28,14 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
         run: |
           railway variables set DATABASE_URL="$DATABASE_URL"
           railway variables set JWT_SECRET="$JWT_SECRET"
           railway variables set PORT="4000"
+          if [ -n "$CORS_ORIGIN" ]; then
+            railway variables set CORS_ORIGIN="$CORS_ORIGIN"
+          fi
       - name: Install API deps
         working-directory: apps/api
         run: npm ci

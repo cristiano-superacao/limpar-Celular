@@ -96,6 +96,7 @@ Copie o valor gerado (algo como `Xk9Ym3Qp7Rw8...`).
 | `RAILWAY_PROJECT_ID_WEB` | `def456...` | Passo 2.2 (Project ID da Web) |
 | `DATABASE_URL` | `postgresql://...?schema=public` | Passo 3 |
 | `JWT_SECRET` | `Xk9Ym3Qp7Rw8...` | Passo 4 |
+| `CORS_ORIGIN` | `https://limpacelular.up.railway.app` | Domínio público do Web (opcional) |
 | `VITE_API_URL` | `https://limpa-celular-api.up.railway.app` | Será atualizado após deploy |
 
 ---
