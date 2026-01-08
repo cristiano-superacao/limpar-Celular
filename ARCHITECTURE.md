@@ -25,7 +25,7 @@ limpa-celular/
 - **Framework**: Express 5
 - **Linguagem**: TypeScript
 - **ORM**: Prisma 7
-- **Database**: SQLite (desenvolvimento)
+ - **Database**: PostgreSQL (produção e desenvolvimento via `DATABASE_URL`)
 - **Auth**: JWT (jsonwebtoken)
 - **Validação**: Zod
 
@@ -349,7 +349,7 @@ Client exibe Alert/Modal informando que é demo
 
 **API** (`.env`):
 ```
-DATABASE_URL=file:./dev.db
+DATABASE_URL=postgresql://usuario:senha@host:5432/banco?schema=public
 JWT_SECRET=sua-chave-secreta-minimo-16-chars
 PORT=4000
 ```

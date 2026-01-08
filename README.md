@@ -16,7 +16,7 @@ Sistema MVP para limpeza de celulares com foco em mídia do WhatsApp, oferecendo
 Monorepo com três aplicações independentes:
 
 - **Web**: Vite + React 19 + TypeScript + Tailwind CSS v4
-- **API**: Node.js + Express + TypeScript + Prisma 7 + SQLite
+- **API**: Node.js + Express + TypeScript + Prisma 7 + PostgreSQL
 - **Mobile**: Expo SDK 54 + React Native + TypeScript
 
 > ⚠️ **Nota importante**: Este MVP usa **varredura mock** (simulação). Acesso real a arquivos do WhatsApp no Android exige permissões nativas e implementação específica com React Native File System.
@@ -43,7 +43,13 @@ npm run dev:api
 - API padrão: `http://localhost:4000`
 - Health check: `GET /health`
 
-O banco SQLite fica em `apps/api/dev.db`.
+Configure `DATABASE_URL` (PostgreSQL) no `.env` da API. Exemplo:
+
+```
+DATABASE_URL=postgresql://usuario:senha@host:5432/banco?schema=public
+JWT_SECRET=sua-chave-secreta
+PORT=4000
+```
 
 ## Rodando o Web
 
