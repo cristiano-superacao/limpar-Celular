@@ -43,8 +43,40 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// Middleware defensivo: garante cabeçalhos CORS mesmo em respostas de erro
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+
+  let allow = false;
+  if (!origin) {
+    allow = true; // same-origin / curl
+  } else if (allowedOrigins.includes(origin)) {
+    allow = true;
+  } else {
+    try {
+      const hostname = new URL(origin).hostname;
+      if (hostname.endsWith(".up.railway.app")) allow = true;
+    } catch {
+      // Ignore parsing errors
+    }
+  }
+
+  if (allow && origin) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+  }
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Max-Age", "86400");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
+// Além do middleware manual, mantém cors() para casos padrão
 app.use(cors(corsOptions));
-// Garantir resposta ao preflight para todas as rotas
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
