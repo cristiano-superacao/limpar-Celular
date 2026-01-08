@@ -38,7 +38,13 @@ const corsOptions: cors.CorsOptions = {
     return callback(new Error("Origin não permitido"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "content-type",
+    "Authorization",
+    "authorization",
+    "Origin",
+  ],
   credentials: true,
   optionsSuccessStatus: 204,
 };
@@ -66,7 +72,11 @@ app.use((req, res, next) => {
     res.header("Vary", "Origin");
   }
   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, content-type, Authorization, authorization, Origin"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Max-Age", "86400");
 
   if (req.method === "OPTIONS") {
