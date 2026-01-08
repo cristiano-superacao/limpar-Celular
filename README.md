@@ -117,6 +117,7 @@ Siga o passo a passo detalhado em **[DEPLOY_INSTRUCTIONS.md](DEPLOY_INSTRUCTIONS
 - `DATABASE_URL` - Conexão PostgreSQL (com `?schema=public`)
 - `JWT_SECRET` - Chave para JWT (mínimo 16 chars)
 - `VITE_API_URL` - URL pública da API no Railway
+- `LOG_LEVEL` - Nível de log da API (`info`, `warn`, `error`, `debug`)
 
 ### 🐛 Troubleshooting
 
