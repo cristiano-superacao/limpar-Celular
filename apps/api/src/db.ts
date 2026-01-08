@@ -1,7 +1,6 @@
 import { PrismaClient } from "../generated/prisma";
 import { getEnv } from "./env";
 
-// Inicializa PrismaClient sem adapter (Postgres)
-// Mantemos validação de env para fail-fast em runtime.
-getEnv();
+// Inicializa PrismaClient
+getEnv(); // Validação de env para fail-fast
 export const db = new PrismaClient();

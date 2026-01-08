@@ -35,7 +35,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Configuração de CORS simplificada e robusta para Railway
+// Configuração de CORS robusta para Railway e desenvolvimento
 const allowedFromEnv = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((s) => s.trim())
@@ -45,25 +45,30 @@ const defaultAllowed = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://127.0.0.1:5173",
+  "http://localhost:4173", // Vite preview
 ];
 
 const allowedOrigins = [...defaultAllowed, ...allowedFromEnv];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Permitir requisições sem origin (curl, same-origin, Postman)
-    if (!origin) return callback(null, true);
+    // Permitir requisições sem origin (curl, same-origin, Postman, testes)
+    if (!origin) {
+      logger.debug("CORS: request without origin allowed");
+      return callback(null, true);
+    }
 
     const isAllowedExplicit = allowedOrigins.includes(origin);
-    // Permitir qualquer domínio Railway (deploy)
-    const isRailwayDomain = origin.endsWith(".up.railway.app") || origin.endsWith(".railway.app");
+    // Permitir qualquer domínio Railway (deploy) - aceita tanto .up.railway.app quanto .railway.app
+    const isRailwayDomain = origin.includes(".railway.app");
 
     if (isAllowedExplicit || isRailwayDomain) {
+      logger.debug({ origin, isAllowedExplicit, isRailwayDomain }, "CORS: origin allowed");
       return callback(null, true);
     }
     
-    logger.warn({ origin }, "CORS origin rejected");
-    return callback(null, false);
+    logger.warn({ origin, allowedOrigins }, "CORS: origin rejected");
+    return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
@@ -76,6 +81,7 @@ const corsOptions: cors.CorsOptions = {
 
 // CORS primeiro - essencial para Railway e preflight
 app.use(cors(corsOptions));
+// OPTIONS explícito para garantir preflight em todas as rotas
 app.options("*", cors(corsOptions));
 
 // Helmet após CORS - sem interferir com cross-origin

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste CORS Local</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin: 0 0 24px 0;
+      color: #0f172a;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #475569;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      width: 100%;
+    }
+    button:hover {
+      background: #1e293b;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .result.success {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .result.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .result.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    pre {
+      margin: 8px 0 0 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Teste CORS - Limpa Celular</h1>
+    
+    <div class="form-group">
+      <label for="apiUrl">URL da API</label>
+      <input type="text" id="apiUrl" value="http://localhost:4000" placeholder="http://localhost:4000">
+    </div>
+
+    <div class="form-group">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" value="teste@exemplo.com" placeholder="seuemail@exemplo.com">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Senha</label>
+      <input type="password" id="password" value="senha12345" placeholder="Mínimo 8 caracteres">
+    </div>
+
+    <button id="btnRegister">Testar Cadastro (POST /auth/register)</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const apiUrlInput = document.getElementById('apiUrl');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const btnRegister = document.getElementById('btnRegister');
+    const resultDiv = document.getElementById('result');
+
+    btnRegister.addEventListener('click', async () => {
+      const apiUrl = apiUrlInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        showResult('error', 'Preencha e-mail e senha');
+        return;
+      }
+
+      if (password.length < 8) {
+        showResult('error', 'Senha deve ter no mínimo 8 caracteres');
+        return;
+      }
+
+      btnRegister.disabled = true;
+      showResult('info', 'Enviando requisição...');
+
+      try {
+        const response = await fetch(`${apiUrl}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showResult('success', `✅ Sucesso! Usuário criado.\n\nToken: ${data.token?.substring(0, 20)}...\nE-mail: ${data.user?.email}`);
+        } else {
+          showResult('error', `❌ Erro ${response.status}\n\n${data.message || JSON.stringify(data, null, 2)}`);
+        }
+      } catch (error) {
+        showResult('error', `❌ Erro de rede/CORS\n\n${error.message}\n\nVerifique:\n1. API está rodando em ${apiUrl}?\n2. CORS configurado corretamente?\n3. Console do navegador (F12) para detalhes`);
+        console.error('Erro completo:', error);
+      } finally {
+        btnRegister.disabled = false;
+      }
+    });
+
+    function showResult(type, message) {
+      resultDiv.className = `result ${type}`;
+      resultDiv.innerHTML = `<pre>${message}</pre>`;
+    }
+  </script>
+</body>
+</html>
