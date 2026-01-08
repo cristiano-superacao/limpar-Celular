@@ -1,8 +1,25 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { clearToken } from "../lib/auth";
+import { clearToken, getToken } from "../lib/auth";
+import { useEffect, useState } from "react";
+import { me } from "../lib/api";
 
 export function Shell() {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Carrega role do usuário para exibir links condicionalmente
+    (async () => {
+      try {
+        if (!getToken()) return;
+        const data = await me();
+        setIsAdmin(data.user.role === "ADMIN");
+      } catch {
+        // Silencia erros; API já protegerá acesso
+        setIsAdmin(false);
+      }
+    })();
+  }, []);
 
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900">
@@ -19,9 +36,11 @@ export function Shell() {
             <Link className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" to="/dashboard">
               Dashboard
             </Link>
-            <Link className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" to="/admin/cloud">
-              Nuvem (Admin)
-            </Link>
+            {isAdmin ? (
+              <Link className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" to="/admin/cloud">
+                Nuvem (Admin)
+              </Link>
+            ) : null}
             <button
               className="rounded-lg bg-slate-900 px-3 py-2 text-white hover:bg-slate-800"
               onClick={() => {
@@ -35,7 +54,7 @@ export function Shell() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 py-6">
         <Outlet />
       </main>
 

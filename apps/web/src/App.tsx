@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Protected } from "./components/Protected";
+import { AdminProtected } from "./components/AdminProtected";
 import { Shell } from "./components/Shell";
 import { AdminCloudPage } from "./pages/AdminCloud";
 import { DashboardPage } from "./pages/Dashboard";
@@ -18,7 +19,9 @@ export default function App() {
           <Route element={<Shell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/requests/:id" element={<RequestDetailPage />} />
-            <Route path="/admin/cloud" element={<AdminCloudPage />} />
+            <Route element={<AdminProtected />}>
+              <Route path="/admin/cloud" element={<AdminCloudPage />} />
+            </Route>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>
