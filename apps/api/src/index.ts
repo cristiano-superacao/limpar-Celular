@@ -55,8 +55,8 @@ const corsOptions: cors.CorsOptions = {
     if (!origin) return callback(null, true);
 
     const isAllowedExplicit = allowedOrigins.includes(origin);
-    // Permitir qualquer domínio *.up.railway.app (Railway deploy)
-    const isRailwayDomain = origin.endsWith(".up.railway.app");
+    // Permitir qualquer domínio Railway (deploy)
+    const isRailwayDomain = origin.endsWith(".up.railway.app") || origin.endsWith(".railway.app");
 
     if (isAllowedExplicit || isRailwayDomain) {
       return callback(null, true);
@@ -69,37 +69,14 @@ const corsOptions: cors.CorsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
   exposedHeaders: ["X-Request-Id"],
   credentials: true,
+  maxAge: 86400,
   preflightContinue: false,
   optionsSuccessStatus: 204,
 };
 
 // CORS primeiro - essencial para Railway e preflight
 app.use(cors(corsOptions));
-
-// Middleware explícito para garantir headers CORS em todas as respostas
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && origin.endsWith(".up.railway.app")) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
-  next();
-});
-
-// OPTIONS handler explícito para preflight
-app.options("*", (req, res) => {
-  const origin = req.headers.origin;
-  if (origin && origin.endsWith(".up.railway.app")) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Max-Age", "86400");
-  }
-  res.sendStatus(204);
-});
+app.options("*", cors(corsOptions));
 
 // Helmet após CORS - sem interferir com cross-origin
 app.use(helmet({
@@ -110,6 +87,31 @@ app.use(helmet({
 app.use(compression());
 app.use(limiter);
 app.use(express.json({ limit: "2mb" }));
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+async function purgeExpiredBackups() {
+  try {
+    const now = new Date();
+    const result = await db.backup.deleteMany({
+      where: { expiresAt: { lt: now } },
+    });
+    if (result.count > 0) {
+      logger.info({ count: result.count }, "expired backups purged");
+    }
+  } catch (e) {
+    logger.warn({ err: e }, "failed to purge expired backups");
+  }
+}
+
+// Purga periódica (não depende de cron externo)
+void purgeExpiredBackups();
+const purgeInterval = setInterval(() => {
+  void purgeExpiredBackups();
+}, 60 * 60 * 1000);
+purgeInterval.unref?.();
 
 // Rate limit específico para autenticação (mais restritivo)
 const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
@@ -128,6 +130,9 @@ app.get("/health", async (_req, res) => {
     );
     const [cloudTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
       "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CloudConfig') AS exists;"
+    );
+    const [backupTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Backup') AS exists;"
     );
 
     const [roleEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
@@ -148,6 +153,7 @@ app.get("/health", async (_req, res) => {
           User: userTable?.exists ?? false,
           CleaningRequest: reqTable?.exists ?? false,
           CloudConfig: cloudTable?.exists ?? false,
+          Backup: backupTable?.exists ?? false,
         },
         enums: {
           Role: roleEnum?.exists ?? false,
@@ -312,7 +318,82 @@ app.post("/requests/:id/scan/mock", requireAuth, async (req, res) => {
     },
   });
 
-  return res.json({ request: updated, scan });
+  // Cria um backup automático com retenção de 5 dias.
+  // Acesso: admin ou o próprio usuário (enforced nas rotas de backup).
+  const backup = await db.backup.create({
+    data: {
+      userId: request.userId,
+      requestId: request.id,
+      data: scan as any,
+      expiresAt: addDays(new Date(), 5),
+    },
+    select: { id: true, createdAt: true, expiresAt: true, requestId: true, userId: true },
+  });
+
+  return res.json({ request: updated, scan, backup });
+});
+
+app.get("/backups", requireAuth, async (req, res) => {
+  const auth = (req as any).auth as { sub: string; role: "USER" | "ADMIN" };
+  await purgeExpiredBackups();
+
+  const backups =
+    auth.role === "ADMIN"
+      ? await db.backup.findMany({
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            userId: true,
+            requestId: true,
+            createdAt: true,
+            expiresAt: true,
+            user: { select: { email: true } },
+          },
+        })
+      : await db.backup.findMany({
+          where: { userId: auth.sub },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, userId: true, requestId: true, createdAt: true, expiresAt: true },
+        });
+
+  return res.json({ backups });
+});
+
+app.get("/backups/:id", requireAuth, async (req, res) => {
+  const auth = (req as any).auth as { sub: string; role: "USER" | "ADMIN" };
+  await purgeExpiredBackups();
+
+  const backup = await db.backup.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      userId: true,
+      requestId: true,
+      createdAt: true,
+      expiresAt: true,
+      data: true,
+    },
+  });
+
+  if (!backup) return res.status(404).json({ message: "Backup não encontrado" });
+  if (auth.role !== "ADMIN" && backup.userId !== auth.sub) {
+    return res.status(403).json({ message: "Sem permissão" });
+  }
+
+  return res.json({ backup });
+});
+
+app.delete("/backups/:id", requireAuth, async (req, res) => {
+  const auth = (req as any).auth as { sub: string; role: "USER" | "ADMIN" };
+
+  const backup = await db.backup.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true } });
+  if (!backup) return res.status(404).json({ message: "Backup não encontrado" });
+  if (auth.role !== "ADMIN" && backup.userId !== auth.sub) {
+    return res.status(403).json({ message: "Sem permissão" });
+  }
+
+  await db.backup.delete({ where: { id: backup.id } });
+  return res.json({ ok: true });
 });
 
 // Configuração de nuvem (admin) - stub
@@ -405,6 +486,32 @@ app.post("/admin/db/ensure", requireAuth, requireRole("ADMIN"), async (_req, res
       );
     `);
 
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Backup" (
+        "id" TEXT PRIMARY KEY,
+        "userId" TEXT NOT NULL,
+        "requestId" TEXT NOT NULL,
+        "data" JSONB NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "expiresAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "Backup_userId_fkey"
+          FOREIGN KEY ("userId") REFERENCES "User"("id")
+          ON DELETE RESTRICT ON UPDATE CASCADE,
+        CONSTRAINT "Backup_requestId_fkey"
+          FOREIGN KEY ("requestId") REFERENCES "CleaningRequest"("id")
+          ON DELETE RESTRICT ON UPDATE CASCADE
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Backup_userId_idx" ON "Backup"("userId");
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Backup_requestId_idx" ON "Backup"("requestId");
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Backup_expiresAt_idx" ON "Backup"("expiresAt");
+    `);
+
     // Retornar status depois de garantir
     const [userTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
       "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') AS exists;"
@@ -414,6 +521,9 @@ app.post("/admin/db/ensure", requireAuth, requireRole("ADMIN"), async (_req, res
     );
     const [cloudTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
       "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CloudConfig') AS exists;"
+    );
+    const [backupTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Backup') AS exists;"
     );
     const [roleEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
       "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='Role') AS exists;"
@@ -433,6 +543,7 @@ app.post("/admin/db/ensure", requireAuth, requireRole("ADMIN"), async (_req, res
           User: userTable?.exists ?? false,
           CleaningRequest: reqTable?.exists ?? false,
           CloudConfig: cloudTable?.exists ?? false,
+          Backup: backupTable?.exists ?? false,
         },
         enums: {
           Role: roleEnum?.exists ?? false,

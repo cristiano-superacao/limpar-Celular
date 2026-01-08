@@ -8,6 +8,6 @@ export default defineConfig({
     host: true,
     // Railway serve em *.up.railway.app; o Vite preview bloqueia hosts desconhecidos por padrão.
     // Permitimos o domínio do Railway para produção.
-    allowedHosts: ['.up.railway.app'],
+    allowedHosts: ['.up.railway.app', '.railway.app'],
   },
 })

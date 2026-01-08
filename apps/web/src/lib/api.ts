@@ -10,15 +10,6 @@ export function getApiUrl(): string {
     return viteUrl;
   }
   
-  // Se estiver em produção Railway (domínio .up.railway.app) e não tiver VITE_API_URL configurado
-  if (typeof window !== "undefined" && window.location.hostname.includes("railway.app")) {
-    // Tentar derivar URL da API do hostname do Web
-    const webHostname = window.location.hostname;
-    // Assumir que API está no formato: limpacelular-api.up.railway.app
-    const apiHostname = webHostname.replace(/^([^.]+)/, "$1-api");
-    return `https://${apiHostname}`;
-  }
-  
   return DEFAULT_API_URL;
 }
 
@@ -28,6 +19,18 @@ export type ApiError = {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
+  // Em produção no Railway, sem VITE_API_URL, o Web acaba chamando localhost/URL errada
+  // e o browser mostra "erro de CORS". Retornamos uma mensagem explícita para orientar.
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname.includes("railway.app") &&
+    ((import.meta as any).env?.VITE_API_URL == null || (import.meta as any).env?.VITE_API_URL === "")
+  ) {
+    throw new Error(
+      "Configuração ausente: defina VITE_API_URL no Railway apontando para a API (ex.: https://SEU-API.up.railway.app)."
+    );
+  }
+
   const res = await fetch(`${getApiUrl()}${path}`, {
     ...init,
     headers: {

@@ -38,6 +38,7 @@ model User {
   role         Role             @default(USER)
   createdAt    DateTime         @default(now())
   requests     CleaningRequest[]
+  backups      Backup[]
 }
 
 model CleaningRequest {
@@ -49,9 +50,25 @@ model CleaningRequest {
   scanResultJson String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  backups        Backup[]
 
   @@index([userId])
   @@index([status])
+}
+
+model Backup {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  requestId String
+  request   CleaningRequest @relation(fields: [requestId], references: [id])
+  data      Json
+  createdAt DateTime       @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([requestId])
+  @@index([expiresAt])
 }
 
 model CloudConfig {

@@ -105,6 +105,8 @@ Copie o valor gerado (algo como `Xk9Ym3Qp7Rw8...`).
 
 **⚠️ IMPORTANTE**: Além dos GitHub Secrets, você DEVE configurar as variáveis diretamente nos serviços do Railway:
 
+**⚠️ ATENÇÃO (nomes das variáveis)**: use nomes válidos de environment variables (somente letras/números/underscore). **Não use espaços, acentos ou nomes “humanos”** (ex.: `URL da API VITE`), pois isso não é lido pelo runtime/build.
+
 ### API Service Variables
 
 1. Vá para Railway Dashboard → Projeto `limpa-celular-api`
@@ -129,10 +131,16 @@ PORT=4000
 VITE_API_URL=https://[dominio-real-da-api].up.railway.app
 ```
 
+**Nota**: `VITE_API_URL` é lida no build do Vite. Depois de alterar essa variável no Railway, faça um novo deploy do serviço **web** para ela surtir efeito.
+
 **✅ Nomes corretos das variáveis**:
 - ✅ `DATABASE_URL` (não `URL_DO_BANCO_DE_DADOS`)
 - ✅ `JWT_SECRET` (não `JWT_TOKEN` ou `SECRET`)
 - ✅ `VITE_API_URL` (não `URL_DA_API_VITE` ou `API_URL`)
+
+**✅ Onde configurar**:
+- `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `PORT`: no serviço **api**
+- `VITE_API_URL`: no serviço **web**
 
 ---
 
