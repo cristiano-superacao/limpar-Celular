@@ -16,24 +16,6 @@ import { requireAuth, requireRole, signToken } from "./auth";
 
 const app = express();
 const logger = pino({ level: process.env.LOG_LEVEL || "info" });
-app.use(pinoHttp({
-  logger,
-  genReqId: (req) => (req.headers["x-request-id"] as string) || randomUUID(),
-}));
-// expõe X-Request-Id nas respostas para correlação
-app.use((req, res, next) => {
-  const id = (req as any).id as string | undefined;
-  if (id) res.setHeader("X-Request-Id", id);
-  next();
-});
-
-// Rate limit geral (aplica antes do CORS para proteger)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Configuração de CORS robusta para Railway e desenvolvimento
 const allowedFromEnv = (process.env.CORS_ORIGIN || "")
@@ -79,20 +61,35 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// CORS primeiro - essencial para Railway e preflight
+// 1. CORS primeiro - essencial para Railway e preflight
 app.use(cors(corsOptions));
-// OPTIONS explícito para garantir preflight em todas as rotas
-app.options("*", cors(corsOptions));
+app.options("*", cors(corsOptions)); // Garante preflight em todas as rotas
 
-// Helmet após CORS - sem interferir com cross-origin
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: false,
-  contentSecurityPolicy: false,
+// 2. Logging
+app.use(pinoHttp({
+  logger,
+  genReqId: (req) => (req.headers["x-request-id"] as string) || randomUUID(),
 }));
+// expõe X-Request-Id nas respostas para correlação
+app.use((req, res, next) => {
+  const id = (req as any).id as string | undefined;
+  if (id) res.setHeader("X-Request-Id", id);
+  next();
+});
+
+// 3. Segurança e Otimização
+app.use(helmet()); // Configurações de segurança padrão
 app.use(compression());
-app.use(limiter);
 app.use(express.json({ limit: "2mb" }));
+
+// 4. Rate limit (aplica após CORS e logging)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
