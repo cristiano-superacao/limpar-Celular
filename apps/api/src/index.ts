@@ -35,7 +35,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Configuração robusta de CORS para produção (Railway) e desenvolvimento
+// Configuração de CORS simplificada e robusta para Railway
 const allowedFromEnv = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((s) => s.trim())
@@ -44,45 +44,68 @@ const allowedFromEnv = (process.env.CORS_ORIGIN || "")
 const defaultAllowed = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://127.0.0.1:5173",
 ];
 
 const allowedOrigins = [...defaultAllowed, ...allowedFromEnv];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Permitir requisições sem origin (curl, same-origin)
+    // Permitir requisições sem origin (curl, same-origin, Postman)
     if (!origin) return callback(null, true);
 
     const isAllowedExplicit = allowedOrigins.includes(origin);
-    // Permitir qualquer domínio *.up.railway.app (Web e API em Railway)
+    // Permitir qualquer domínio *.up.railway.app (Railway deploy)
     const isRailwayDomain = origin.endsWith(".up.railway.app");
 
     if (isAllowedExplicit || isRailwayDomain) {
       return callback(null, true);
     }
-    return callback(new Error("Origin não permitido"));
+    
+    logger.warn({ origin }, "CORS origin rejected");
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "content-type",
-    "Authorization",
-    "authorization",
-    "Origin",
-  ],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+  exposedHeaders: ["X-Request-Id"],
   credentials: true,
+  preflightContinue: false,
   optionsSuccessStatus: 204,
 };
 
-// CORS PRIMEIRO - crítico para Railway
+// CORS primeiro - essencial para Railway e preflight
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
-// Helmet após CORS com configurações permissivas para cross-origin
+// Middleware explícito para garantir headers CORS em todas as respostas
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && origin.endsWith(".up.railway.app")) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  next();
+});
+
+// OPTIONS handler explícito para preflight
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && origin.endsWith(".up.railway.app")) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Request-Id");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
+  res.sendStatus(204);
+});
+
+// Helmet após CORS - sem interferir com cross-origin
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-  contentSecurityPolicy: false, // Desabilita CSP para evitar conflitos em produção
+  crossOriginOpenerPolicy: false,
+  contentSecurityPolicy: false,
 }));
 app.use(compression());
 app.use(limiter);
