@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
-import { getCloudConfig, setCloudConfig, type CloudProvider } from "../lib/api";
+import { getCloudConfig, setCloudConfig, type CloudProvider, me } from "../lib/api";
 import { Button, Card, FieldLabel, InlineMessage, Input, Subtitle, Title } from "../ui/components";
 import { colors, spacing } from "../ui/theme";
 
 export function AdminCloudScreen() {
   const auth = useAuth();
   const token = auth.token;
+  const navigation = useNavigation<any>();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,6 +24,17 @@ export function AdminCloudScreen() {
   useEffect(() => {
     (async () => {
       if (!token) return;
+      // Guard leve no cliente: redireciona se não for ADMIN
+      try {
+        const info = await me(token);
+        if (info.user.role !== "ADMIN") {
+          navigation.navigate("Dashboard");
+          return;
+        }
+      } catch {
+        navigation.navigate("Dashboard");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -33,7 +46,12 @@ export function AdminCloudScreen() {
           setRegion(data.config.region || "");
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Falha ao carregar");
+        const msg = err instanceof Error ? err.message : "Falha ao carregar";
+        setError(msg);
+        if (msg.includes("403") || msg.toLowerCase().includes("permiss")) {
+          navigation.navigate("Dashboard");
+          return;
+        }
       } finally {
         setLoading(false);
       }
