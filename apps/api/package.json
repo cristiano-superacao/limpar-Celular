@@ -14,7 +14,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
   "private": true,
   "dependencies": {
     "@prisma/client": "^7.2.0",

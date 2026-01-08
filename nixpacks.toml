@@ -2,16 +2,18 @@
 # O Railway usará automaticamente o Nixpacks para build
 
 [phases.setup]
-nixPkgs = ['nodejs-20_x']
+nixPkgs = ['nodejs-20_x', 'openssl']
 
 [phases.install]
 cmds = [
-  'npm ci',
+  'npm ci --legacy-peer-deps',
   'cd apps/api && npx prisma generate'
 ]
 
 [phases.build]
-cmds = ['npm run build -w apps/api']
+cmds = [
+  'npm run build -w apps/api'
+]
 
 [start]
-cmd = 'npm run start -w apps/api'
+cmd = 'cd apps/api && npx prisma migrate deploy && node dist/index.js'
