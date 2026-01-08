@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-const { spawn } = require('node:child_process');
+import { spawn } from 'node:child_process';
 
 const port = process.env.PORT ? String(process.env.PORT) : '5173';
 const args = ['preview', '--host', '--port', port];
 
-const child = spawn('npx', ['vite', ...args], {
+const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const child = spawn(npxCmd, ['vite', ...args], {
   stdio: 'inherit',
-  shell: process.platform === 'win32',
 });
 
 child.on('exit', (code) => {
