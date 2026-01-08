@@ -26,6 +26,7 @@ export function RequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
+  const [backupSuccess, setBackupSuccess] = useState<string | null>(null);
 
   const scan: ScanResult | null = useMemo(() => {
     if (!request?.scanResultJson) return null;
@@ -112,6 +113,7 @@ export function RequestDetailPage() {
       </div>
 
       {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+      {backupSuccess ? <div className="rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700">{backupSuccess}</div> : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-1">
@@ -167,11 +169,27 @@ export function RequestDetailPage() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          className="rounded-xl border px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                          className="rounded-xl border px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
                           type="button"
-                          onClick={() => alert("Backup (demo): aqui chamaria a nuvem configurada pelo admin.")}
+                          disabled={scanLoading}
+                          onClick={async () => {
+                            if (!request) return;
+                            setScanLoading(true);
+                            setError(null);
+                            setBackupSuccess(null);
+                            try {
+                              await runMockScan(request.id);
+                              await refresh();
+                              setBackupSuccess(`Backup criado com sucesso! Válido por 5 dias.`);
+                              setTimeout(() => setBackupSuccess(null), 5000);
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Falha ao criar backup");
+                            } finally {
+                              setScanLoading(false);
+                            }
+                          }}
                         >
-                          Fazer backup
+                          {scanLoading ? "Criando..." : "Fazer backup"}
                         </button>
                         <button
                           className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"

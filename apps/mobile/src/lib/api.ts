@@ -103,3 +103,21 @@ export async function setCloudConfig(
     body: JSON.stringify(input),
   }, token);
 }
+
+export type Backup = {
+  id: string;
+  userId: string;
+  requestId: string;
+  data: unknown;
+  createdAt: string;
+  expiresAt: string;
+  user?: { email: string };
+};
+
+export async function listBackups(token: string) {
+  return request<{ backups: Backup[] }>("/backups", undefined, token);
+}
+
+export async function getBackup(token: string, id: string) {
+  return request<{ backup: Backup }>(`/backups/${id}`, undefined, token);
+}

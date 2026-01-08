@@ -134,3 +134,21 @@ export async function setCloudConfig(input: Omit<CloudConfig, "id" | "createdAt"
     body: JSON.stringify(input),
   });
 }
+
+export type Backup = {
+  id: string;
+  userId: string;
+  requestId: string;
+  data: unknown;
+  createdAt: string;
+  expiresAt: string;
+  user?: { email: string };
+};
+
+export async function listBackups() {
+  return request<{ backups: Backup[] }>("/backups");
+}
+
+export async function getBackup(id: string) {
+  return request<{ backup: Backup }>(`/backups/${id}`);
+}

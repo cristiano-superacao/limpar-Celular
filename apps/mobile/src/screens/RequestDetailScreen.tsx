@@ -161,7 +161,19 @@ export function RequestDetailScreen({ route }: any) {
                         <Button
                           title="Backup"
                           variant="secondary"
-                          onPress={() => Alert.alert("Backup (demo)", "Aqui chamaria a nuvem configurada pelo admin.")}
+                          onPress={async () => {
+                            if (!token) return;
+                            setScanLoading(true);
+                            try {
+                              await runMockScan(token, request.id);
+                              await refresh();
+                              Alert.alert("Sucesso", "Backup criado com sucesso! Válido por 5 dias.");
+                            } catch (err) {
+                              Alert.alert("Erro", err instanceof Error ? err.message : "Falha ao criar backup");
+                            } finally {
+                              setScanLoading(false);
+                            }
+                          }}
                         />
                         <Button
                           title="Excluir"
