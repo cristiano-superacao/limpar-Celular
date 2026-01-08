@@ -69,9 +69,7 @@ jobs:
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
-          if [ -n "$VITE_API_URL" ]; then
-            railway variables set VITE_API_URL="$VITE_API_URL"
-          fi
+          railway variables set VITE_API_URL="$VITE_API_URL"
       - name: Install Web deps
         working-directory: apps/web
         run: npm ci

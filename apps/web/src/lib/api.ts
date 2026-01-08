@@ -3,7 +3,23 @@ import { getToken } from "./auth";
 const DEFAULT_API_URL = "http://localhost:4000";
 
 export function getApiUrl(): string {
-  return (import.meta as any).env?.VITE_API_URL || DEFAULT_API_URL;
+  // Prioridade: 1) VITE_API_URL, 2) Detectar Railway, 3) Localhost
+  const viteUrl = (import.meta as any).env?.VITE_API_URL;
+  
+  if (viteUrl) {
+    return viteUrl;
+  }
+  
+  // Se estiver em produção Railway (domínio .up.railway.app) e não tiver VITE_API_URL configurado
+  if (typeof window !== "undefined" && window.location.hostname.includes("railway.app")) {
+    // Tentar derivar URL da API do hostname do Web
+    const webHostname = window.location.hostname;
+    // Assumir que API está no formato: limpacelular-api.up.railway.app
+    const apiHostname = webHostname.replace(/^([^.]+)/, "$1-api");
+    return `https://${apiHostname}`;
+  }
+  
+  return DEFAULT_API_URL;
 }
 
 export type ApiError = {

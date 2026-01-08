@@ -95,9 +95,39 @@ npx prisma studio
 
 ## Deploy (Railway)
 
-- A API depende de `DATABASE_URL` e `JWT_SECRET`.
-- Em produção, a API executa `prisma migrate deploy` no start.
-- Se você estiver usando GitHub Actions + Railway CLI, garanta que o Secret/variável se chame exatamente `DATABASE_URL` (não `DATABASE_URI`/`DATABASE` etc.).
+### 🔍 Verificar Configuração
+
+```bash
+node scripts/check-railway-config.js
+```
+
+### 📖 Guia Completo
+
+Siga o passo a passo detalhado em **[DEPLOY_INSTRUCTIONS.md](DEPLOY_INSTRUCTIONS.md)**:
+
+1. Configurar 6 GitHub Secrets
+2. Criar projetos Railway (API + Web)
+3. Provisionar PostgreSQL
+4. Deploy automático via GitHub Actions
+
+### ⚙️ Variáveis de Ambiente
+
+- `DATABASE_URL` - Conexão PostgreSQL (com `?schema=public`)
+- `JWT_SECRET` - Chave para JWT (mínimo 16 chars)
+- `VITE_API_URL` - URL pública da API no Railway
+
+### 🐛 Troubleshooting
+
+**Erro "Failed to connect" no Web:**
+
+1. Verifique `VITE_API_URL` no GitHub Secrets
+2. Deve apontar para URL da API: `https://[projeto]-api.up.railway.app`
+3. Execute novo deploy: `git push origin main`
+
+**API não inicia:**
+
+1. Confirme `DATABASE_URL` termina com `?schema=public`
+2. Verifique logs no Railway Dashboard → API service → Deployments
 
 ## 📋 Fluxo do MVP
 
