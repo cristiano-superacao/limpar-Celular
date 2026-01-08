@@ -26,17 +26,14 @@ app.use((req, res, next) => {
   if (id) res.setHeader("X-Request-Id", id);
   next();
 });
-// Segurança e performance básicas
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
-app.use(compression());
-// Rate limit geral (pode ajustar conforme necessidade)
+
+// Rate limit geral (aplica antes do CORS para proteger)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use(limiter);
 
 // Configuração robusta de CORS para produção (Railway) e desenvolvimento
 const allowedFromEnv = (process.env.CORS_ORIGIN || "")
@@ -77,9 +74,18 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// CORS padronizado (inclui preflight)
+// CORS PRIMEIRO - crítico para Railway
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// Helmet após CORS com configurações permissivas para cross-origin
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  contentSecurityPolicy: false, // Desabilita CSP para evitar conflitos em produção
+}));
+app.use(compression());
+app.use(limiter);
 app.use(express.json({ limit: "2mb" }));
 
 // Rate limit específico para autenticação (mais restritivo)
