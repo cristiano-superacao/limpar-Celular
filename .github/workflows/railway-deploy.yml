@@ -1,0 +1,58 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Railway CLI
+        run: npm i -g railway
+      - name: Login Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway login --token "$RAILWAY_TOKEN"
+      - name: Install API deps
+        working-directory: apps/api
+        run: npm ci
+      - name: Build API
+        working-directory: apps/api
+        run: npm run build
+      - name: Deploy API
+        run: railway up --path apps/api --service "api" --project "$RAILWAY_PROJECT_ID_API"
+        env:
+          RAILWAY_PROJECT_ID_API: ${{ secrets.RAILWAY_PROJECT_ID_API }}
+
+  deploy-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Railway CLI
+        run: npm i -g railway
+      - name: Login Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway login --token "$RAILWAY_TOKEN"
+      - name: Install Web deps
+        working-directory: apps/web
+        run: npm ci
+      - name: Build Web
+        working-directory: apps/web
+        run: npm run build
+      - name: Deploy Web
+        run: railway up --path apps/web --service "web" --project "$RAILWAY_PROJECT_ID_WEB"
+        env:
+          RAILWAY_PROJECT_ID_WEB: ${{ secrets.RAILWAY_PROJECT_ID_WEB }}
