@@ -320,6 +320,110 @@ app.put("/admin/cloud-config", requireAuth, requireRole("ADMIN"), async (req, re
   return res.json({ config });
 });
 
+// Admin: garantir schema do banco (idempotente)
+app.post("/admin/db/ensure", requireAuth, requireRole("ADMIN"), async (_req, res) => {
+  try {
+    // Enums
+    await db.$executeRawUnsafe(`
+      DO $$ BEGIN
+        CREATE TYPE "Role" AS ENUM ('USER','ADMIN');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.$executeRawUnsafe(`
+      DO $$ BEGIN
+        CREATE TYPE "CleaningStatus" AS ENUM ('PENDING','APPROVED','REJECTED','SCANNED','COMPLETED');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+    await db.$executeRawUnsafe(`
+      DO $$ BEGIN
+        CREATE TYPE "CloudProvider" AS ENUM ('NONE','AZURE_BLOB','AWS_S3','GOOGLE_DRIVE','OTHER');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `);
+
+    // Tabelas
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "User" (
+        "id" TEXT PRIMARY KEY,
+        "email" TEXT NOT NULL UNIQUE,
+        "passwordHash" TEXT NOT NULL,
+        "role" "Role" NOT NULL DEFAULT 'USER',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CleaningRequest" (
+        "id" TEXT PRIMARY KEY,
+        "userId" TEXT NOT NULL,
+        "status" "CleaningStatus" NOT NULL DEFAULT 'PENDING',
+        "deviceInfo" TEXT,
+        "scanResultJson" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "CleaningRequest_userId_fkey"
+          FOREIGN KEY ("userId") REFERENCES "User"("id")
+          ON DELETE RESTRICT ON UPDATE CASCADE
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "CleaningRequest_userId_idx" ON "CleaningRequest"("userId");
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "CleaningRequest_status_idx" ON "CleaningRequest"("status");
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CloudConfig" (
+        "id" TEXT PRIMARY KEY,
+        "provider" "CloudProvider" NOT NULL DEFAULT 'NONE',
+        "enabled" BOOLEAN NOT NULL DEFAULT FALSE,
+        "bucketOrContainer" TEXT,
+        "region" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL
+      );
+    `);
+
+    // Retornar status depois de garantir
+    const [userTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') AS exists;"
+    );
+    const [reqTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CleaningRequest') AS exists;"
+    );
+    const [cloudTable]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='CloudConfig') AS exists;"
+    );
+    const [roleEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='Role') AS exists;"
+    );
+    const [statusEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='CleaningStatus') AS exists;"
+    );
+    const [providerEnum]: Array<{ exists: boolean }> = await db.$queryRawUnsafe(
+      "SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname='CloudProvider') AS exists;"
+    );
+
+    return res.json({
+      ok: true,
+      ensured: true,
+      schema: {
+        tables: {
+          User: userTable?.exists ?? false,
+          CleaningRequest: reqTable?.exists ?? false,
+          CloudConfig: cloudTable?.exists ?? false,
+        },
+        enums: {
+          Role: roleEnum?.exists ?? false,
+          CleaningStatus: statusEnum?.exists ?? false,
+          CloudProvider: providerEnum?.exists ?? false,
+        },
+      },
+    });
+  } catch (e) {
+    logger.error({ err: e }, "db ensure failed");
+    return res.status(500).json({ ok: false, message: "Falha ao garantir schema" });
+  }
+});
+
 const env = getEnv();
 const port = env.PORT ?? 4000;
 app.listen(port, () => {
